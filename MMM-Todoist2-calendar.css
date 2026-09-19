@@ -1,0 +1,179 @@
+/* Magic Mirror
+ * Module: MMM-Todoist2 -- Calendar display
+ *
+ * Layout for the optional month calendar. Only loaded when the module config
+ * sets `displayMode: "calendar"`. The palette, fonts and shared header styles
+ * live in MMM-Todoist2-display.css; everything here is scoped under
+ * `.mmm-todoist2-calendar` so it cannot leak into the other displays.
+ *
+ * MIT Licensed.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Month row -- the demo's navigation row, without the prev / next buttons
+ * since the display is read only.
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-calendar .cal-month-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px 16px;
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-calendar .cal-month {
+    font-family: var(--mm-font-primary);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--mm-text-bright);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.mmm-todoist2-calendar .cal-month-count {
+    font-family: var(--mm-font-secondary);
+    font-size: 12px;
+    color: var(--mm-text-muted);
+    margin: 3px 0 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Grid -- the month is laid out in full, since nothing off-screen is
+ * reachable on a mirror.
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-calendar .cal-grid {
+    padding: 0 32px 32px;
+    overflow: hidden;
+}
+
+.mmm-todoist2-calendar .cal-weekdays,
+.mmm-todoist2-calendar .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.mmm-todoist2-calendar .cal-weekdays {
+    margin-bottom: 8px;
+}
+
+.mmm-todoist2-calendar .cal-weekday {
+    font-family: var(--mm-font-primary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mm-text-dimmed);
+    text-align: center;
+    padding: 4px 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Day cells
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-calendar .cal-day {
+    background: var(--mm-surface-2);
+    border: 1px solid var(--mm-border);
+    border-radius: var(--mm-radius-md);
+    padding: 8px 8px 6px;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Days from the neighbouring months, shown for context only */
+.mmm-todoist2-calendar .cal-day-outside {
+    opacity: 0.35;
+}
+
+.mmm-todoist2-calendar .cal-day-today {
+    background: var(--mm-calendar-today-bg);
+    border: 1.5px solid var(--mm-calendar-today);
+}
+
+.mmm-todoist2-calendar .cal-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    margin-bottom: 2px;
+}
+
+.mmm-todoist2-calendar .cal-day-number {
+    font-family: var(--mm-font-primary);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mm-text-muted);
+    line-height: 1;
+}
+
+.mmm-todoist2-calendar .cal-day-today .cal-day-number {
+    font-weight: 700;
+    color: var(--mm-calendar-today);
+}
+
+.mmm-todoist2-calendar .cal-day-count {
+    font-family: var(--mm-font-secondary);
+    font-size: 10px;
+    color: var(--mm-text-dimmed);
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Task chips -- read only, so no hover or pointer affordances.
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-calendar .cal-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--mm-surface-2);
+    border: 1px solid var(--mm-border);
+    border-radius: var(--mm-radius-sm);
+    padding: 3px 6px;
+    cursor: default;
+    min-width: 0;
+}
+
+/* The chip carries its own surface, so it needs contrast inside today's cell */
+.mmm-todoist2-calendar .cal-day-today .cal-chip {
+    border-color: var(--mm-border-subtle);
+}
+
+.mmm-todoist2-calendar .cal-chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-calendar .cal-chip-title {
+    font-family: var(--mm-font-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--mm-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    min-width: 0;
+}
+
+.mmm-todoist2-calendar .cal-chip-recurring {
+    color: var(--mm-text-dimmed);
+    flex-shrink: 0;
+    display: flex;
+}
+
+/* ---------------------------------------------------------------------------
+ * Truncation marker -- shown when a day holds more tasks than it displays
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-calendar .cal-more {
+    font-size: 10px;
+    padding-left: 2px;
+    margin-top: 1px;
+}

@@ -1,82 +1,133 @@
-/* global Module */
+/* global Module, Log, config, moment, MMMTodoist2List, MMMTodoist2Kanban, MMMTodoist2Calendar */
 
 /* Magic Mirror
  * Module: MMM-Todoist2
  *
- * Managed by Zach Raudebaugh
+ * Managed by Zach Raudebaugh (ZachR19)
  * Fork of MMM-Todoist by Chris Brooker
  *
  * MIT Licensed.
  */
 
-/*
- * Update by 19ZachR 24/5/2025
- * - Updated Todoist API URI
- * Update by mabahj 24/11/2019
- * - Added support for labels in addtion to projects
- * Update by AgP42 the 18/07/2018
- * Modification added :
- * - Management of a PIR sensor with the module MMM-PIR-Sensor (by PaViRo). In case PIR module detect no user,
- * the update of the ToDoIst is stopped and will be requested again at the return of the user
- * - Management of the "module.hidden" by the core system : same behaviour as "User_Presence" by the PIR sensor
- * - Add "Loading..." display when the infos are not yet loaded from the server
- * - Possibility to add the last update time from server at the end of the module.
- * This can be configured using "displayLastUpdate" and "displayLastUpdateFormat"
- * - Possibility to display long task on several lines(using the code from default module "calendar".
- * This can be configured using "wrapEvents" and "maxTitleLength"
- *
- * // Update 27/07/2018 :
- * - Correction of start-up update bug
- * - correction of regression on commit #28 for tasks without dueDate
- * */
-
-//UserPresence Management (PIR sensor)
-var UserPresence = true; //true by default, so no impact for user without a PIR sensor
-
 Module.register("MMM-Todoist2", {
 
 	defaults: {
-		maximumEntries: 10,
-		projects: [],
-		blacklistProjects: false,
-	    	labels: [""],
-		updateInterval: 10 * 60 * 1000, // every 10 minutes,
+		maximumEntries: 25,                        // Maximum number of tasks to display at once
+		filter: "view all",                        // Optional Todoist filter query, leave as "view all" to see all tasks. ref: https://www.todoist.com/help/todoist/features/introduction-to-filters-V98wIH
+		updateInterval: 10 * 60 * 1000,            // How often the API is queried, defaults to every 10 minutes
 		fade: true,
 		fadePoint: 0.25,
 		fadeMinimumOpacity: 0.25,
 
-		// New config specific to MMM-Todoist2
-		groupByProject: false,
+		displayLastUpdate: false,                  // add or not a line after the tasks with the last server update time
+		displayLastUpdateFormat: "ddd - HH:mm:ss", // format to display the last update. See Moment.js documentation for all display possibilities
+		maxTitleLength: 25,                        // 10 to 50. Value to cut the line if wrapEvents: true
+		wrapEvents: false,                         // wrap events to multiple lines breaking at maxTitleLength
+		displayTasksWithoutDue: true,              // Set to false to not print tasks without a due date
+		displayTasksWithinDays: -1,                // If >= 0, do not print tasks with a due date more than this number of days into the future (e.g., 0 prints today and overdue)
+		displaySubtasks: true,                     // set to false to exclude subtasks
+		showProject: true,                         // show each task's project under its title (hidden when grouping by project)
+		sortOrder: ["todoist"],
 
-		//New config from AgP42
-		displayLastUpdate: false, //add or not a line after the tasks with the last server update time
-		displayLastUpdateFormat: "ddd - HH:mm:ss", //format to display the last update. See Moment.js documentation for all display possibilities
-		maxTitleLength: 25, //10 to 50. Value to cut the line if wrapEvents: true
-		wrapEvents: false, // wrap events to multiple lines breaking at maxTitleLength
-		displayTasksWithoutDue: true, // Set to false to not print tasks without a due date
-		displayTasksWithinDays: -1, // If >= 0, do not print tasks with a due date more than this number of days into the future (e.g., 0 prints today and overdue)
-		// 2019-12-31 by thyed
-		displaySubtasks: true, // set to false to exclude subtasks
-		displayAvatar: false,
-		showProject: true,
+		// How the tasks are rendered. Only the files belonging to the chosen
+		// display are loaded.
+		displayMode: "list",                       // "list", "kanban" or "calendar"
 
-		//This has been designed to use the Todoist Sync API.
-		apiVersion: "v1",
-		apiBase: "https://api.todoist.com/api",
-		todoistEndpoint: "sync",
+		// List display, used when displayMode is "list"
+		groupByProject: false,                     // group the tasks under a heading per project
+		maximumEntriesPerProjectGroup: 5,          // max tasks displayed per project group when groupByProject is true
+		groupBySection: false,                     // group the tasks under a heading per section. With groupByProject, sections nest inside their project
+		maximumEntriesPerSectionGroup: 5,          // max tasks displayed per section group when groupBySection is true
+		unsectionedListGroupLabel: "Other",        // heading for tasks outside any section, when grouping by section alone
+		showListHeader: true,                      // show the list title and task count. When false, MagicMirror's own module header is used instead
+		showListLegend: false,                     // show the priority legend in the list header
+		listTitle: null,                           // list title, defaults to the module header or "My Tasks"
+
+		// Kanban display, used when displayMode is "kanban"
+		maximumEntriesPerKanbanColumn: 8,          // max tasks displayed per column, the rest are summarised as "+N more"
+		kanbanColumnOrder: [],                     // optional section names, in the order the columns should appear. Ex. ["Daily", "Weekly"]
+		mergeKanbanColumnsByName: true,            // sections with the same name in different projects share one column
+		hideEmptyKanbanColumns: true,              // hide columns that have no tasks to show
+		showUnsectionedKanbanColumn: true,         // show tasks that are not in a Todoist section in their own column
+		unsectionedKanbanColumnLabel: "Other",     // label for that column
+		showKanbanHeader: true,                    // show the board title and task count above the columns
+		showKanbanLegend: true,                    // show the priority legend in the board header
+		kanbanTitle: null,                         // board title, defaults to the module header or "My Tasks"
+		highlightOverdueKanbanTasks: true,         // colour the due date of overdue tasks with the urgent priority colour
+
+		// Calendar display, used when displayMode is "calendar"
+		maximumEntriesPerCalendarDay: 3,           // max task chips displayed per day, the rest are summarised as "+N more"
+		calendarMonthOffset: 0,                    // months from the current one to display. 0 is this month, 1 is next month
+		calendarWeekStartsOn: 0,                   // first column of the grid. 0 is Sunday, 1 is Monday
+		calendarAlwaysSixWeeks: true,              // always draw six rows, so the calendar keeps its height from month to month
+		highlightTodayInCalendar: true,            // outline today's cell
+		showCalendarDayTaskCounts: true,           // show "N tasks" next to the day number
+		showCalendarHeader: true,                  // show the title bar above the calendar
+		showCalendarLegend: true,                  // show the priority legend in that title bar
+		calendarTitle: null,                       // title, defaults to the module header or "My Tasks"
+
+		// This has been designed to use the Todoist Tasks API.
+		api_version: "v1",
+		api_base: "https://api.todoist.com/api",
+		api_tasksEndpoint: "tasks/filter",
+		api_sectionsEndpoint: "sections",
+		api_projectsEndpoint: "projects",
+		api_lang: "en",                            // language filters are written in. Ex. en, de, fr, etc.
+		api_cursor: null,                          // holds the current cursor for api pagination
+		api_limit: 200,                            // max number of tasks to fetch per request
 
 		todoistResourceType: "[\"items\", \"projects\", \"collaborators\", \"user\", \"labels\"]",
 
 		debug: false,
+	},
 
-		// Updated: sortType is now an array of sort keys
-		sortOrder: ["todoist"]
+	// The displays that can render the tasks, and the files each one needs.
+	// Only the selected display's files are loaded, alongside the shared
+	// MMM-Todoist2-display.{css,js}.
+	displays: {
+		list: { style: "MMM-Todoist2-list.css", script: "MMM-Todoist2-list.js" },
+		kanban: { style: "MMM-Todoist2-kanban.css", script: "MMM-Todoist2-kanban.js" },
+		calendar: { style: "MMM-Todoist2-calendar.css", script: "MMM-Todoist2-calendar.js" }
+	},
+
+	// Define required styles.
+	getStyles: function () {
+		var display = this.displays[this.getDisplayMode()];
+
+		return ["MMM-Todoist2.css", "MMM-Todoist2-display.css", display.style];
 	},
 
 	// Define required scripts.
-	getStyles: function () {
-		return ["MMM-Todoist2.css"];
+	getScripts: function () {
+		var display = this.displays[this.getDisplayMode()];
+
+		return ["MMM-Todoist2-display.js", display.script];
 	},
+
+	///////
+	// The display to render, falling back to the task list when displayMode is
+	// missing or not one we know about
+	///////
+	getDisplayMode: function () {
+		var mode = String(this.config.displayMode || "list").trim().toLowerCase();
+
+		return this.displays[mode] ? mode : "list";
+	},
+
+	///////
+	// The core draws this above the module, and styles it with a rule of its
+	// own. The displays carry their own title bar, so the core header is
+	// suppressed rather than shown twice; each display still falls back to
+	// `data.header` for its own title. A list without its title bar
+	// (showListHeader: false) keeps the core header.
+	///////
+	getHeader: function () {
+		if (this.getDisplayMode() === "list" && !this.config.showListHeader)
+			return this.data.header;
+
+		return "";
+	},
+
 	getTranslations: function () {
 		return {
 			en: "translations/en.json",
@@ -89,27 +140,22 @@ Module.register("MMM-Todoist2", {
 		var self = this;
 		Log.info("Starting module: " + this.name);
 
-		this.updateIntervalID = 0; // Definition of the IntervalID to be able to stop and start it again
+		this.updateIntervalID = 0;        // Definition of the IntervalID to be able to stop and start it again
 		this.ModuleToDoIstHidden = false; // by default it is considered displayed. Note : core function "this.hidden" has strange behaviour, so not used here
 
-		//to display "Loading..." at start-up
+		// to display "Loading..." at start-up
 		this.title = "Loading...";
 		this.loaded = false;
 
-		if (this.config.accessToken === "") {
-			Log.error("MMM-Todoist: AccessToken not set!");
+		if (this.config.apiKey === "") {
+			Log.error("MMM-Todoist2: apiKey notset!");
 			return;
 		}
 
-		//Support legacy properties
-		if (this.config.lists !== undefined) {
-			if (this.config.lists.length > 0) {
-				this.config.projects = this.config.lists;
-			}
-		}
-
-		// keep track of user's projects list (used to build the "whitelist")
-		this.userList = typeof this.config.projects !== "undefined" ? JSON.parse(JSON.stringify(this.config.projects)) : [];
+		// A typo here would otherwise fail silently back to the task list
+		if (this.config.displayMode && this.getDisplayMode() !== String(this.config.displayMode).trim().toLowerCase())
+			Log.warn(this.name + ": unknown displayMode \"" + this.config.displayMode +
+				"\", showing the task list. Use \"list\", \"kanban\" or \"calendar\".");
 
 		this.sendSocketNotification("FETCH_TODOIST", this.config);
 
@@ -119,47 +165,29 @@ Module.register("MMM-Todoist2", {
 		}, this.config.updateInterval);
 	},
 
-	suspend: function () { //called by core system when the module is not displayed anymore on the screen
+	///////
+	// Called by core system when the module is not displayed anymore on the screen
+	///////
+	suspend: function () { 
 		this.ModuleToDoIstHidden = true;
 		//Log.log("Fct suspend - ModuleHidden = " + ModuleHidden);
 		this.GestionUpdateIntervalToDoIst();
 	},
 
-	resume: function () { //called by core system when the module is displayed on the screen
+	///////
+	// Called by core system when the module is displayed on the screen
+	///////
+	resume: function () { 
 		this.ModuleToDoIstHidden = false;
 		//Log.log("Fct resume - ModuleHidden = " + ModuleHidden);
 		this.GestionUpdateIntervalToDoIst();
 	},
 
+	///////
+	// Called by core system when another module sends a notification
+	///////
 	notificationReceived: function (notification, payload) {
-		if (notification === "USER_PRESENCE") { // notification sended by module MMM-PIR-Sensor. See its doc
-			//Log.log("Fct notificationReceived USER_PRESENCE - payload = " + payload);
-			UserPresence = payload;
-			this.GestionUpdateIntervalToDoIst();
-		}
-	},
-
-	// Additional support for MMM-PIR-Sensor to detect when there is movement in front of the mirror
-	GestionUpdateIntervalToDoIst: function () {
-		if (UserPresence === true && this.ModuleToDoIstHidden === false) {
-			var self = this;
-
-			// update now
-			this.sendSocketNotification("FETCH_TODOIST", this.config);
-
-			//if no IntervalID defined, we set one again. This is to avoid several setInterval simultaneously
-			if (this.updateIntervalID === 0) {
-
-				this.updateIntervalID = setInterval(function () {
-					self.sendSocketNotification("FETCH_TODOIST", self.config);
-				}, this.config.updateInterval);
-			}
-
-		} else { //if (UserPresence = false OR ModuleHidden = true)
-			Log.log("Nobody is looking, stop updating " + this.name + " project : " + this.config.projects);
-			clearInterval(this.updateIntervalID); // stop the update interval of this module
-			this.updateIntervalID = 0; //reset the flag to be able to start another one at resume
-		}
+		// Log.log("notificationReceived: " + notification + " - payload : " + payload);
 	},
 
 	// Code from MichMich from default module Calendar : to manage task displayed on several lines
@@ -171,173 +199,115 @@ Module.register("MMM-Todoist2", {
 	 * @param {boolean} wrapEvents Wrap the text after the line has reached maxLength
 	 * @returns {string} The shortened string
 	 */
-	shorten: function (string, maxLength, wrapEvents) {
-		if (typeof string !== "string") {
+	shorten: function (string, maxLength, wrapEvents) 
+	{
+		if (typeof string !== "string")
 			return "";
-		}
-
+	
 		if (wrapEvents === true) {
 			var temp = "";
 			var currentLine = "";
 			var words = string.split(" ");
 
-			for (var i = 0; i < words.length; i++) {
+			for (var i = 0; i < words.length; i++)
+			{
 				var word = words[i];
-				if (currentLine.length + word.length < (typeof maxLength === "number" ? maxLength : 25) - 1) { // max - 1 to account for a space
-					currentLine += (word + " ");
-				} else {
-					if (currentLine.length > 0) {
+
+				// max - 1 to account for a space
+				if (currentLine.length + word.length < (typeof maxLength === "number" ? maxLength : 25) - 1) 
+					currentLine += (word + " "); 
+				else 
+				{
+					if (currentLine.length > 0)
 						temp += (currentLine + "<br>" + word + " ");
-					} else {
+					else
 						temp += (word + "<br>");
-					}
+
 					currentLine = "";
 				}
 			}
 
 			return (temp + currentLine).trim();
-		} else {
-			if (maxLength && typeof maxLength === "number" && string.length > maxLength) {
+		} 
+		else 
+		{
+			if (maxLength && typeof maxLength === "number" && string.length > maxLength)
 				return string.trim().slice(0, maxLength) + "&hellip;";
-			} else {
+			else
 				return string.trim();
-			}
 		}
 	},
-	//end modif AgP
 
+	////////
 	// Override socket notification handler.
 	// ******** Data sent from the Backend helper. This is the data from the Todoist API ************
+	////////
 	socketNotificationReceived: function (notification, payload) {
 		if (notification === "TASKS") {
 			this.filterTodoistData(payload);
 
-			if (this.config.displayLastUpdate) {
-				this.lastUpdate = Date.now() / 1000; //save the timestamp of the last update to be able to display it
-				Log.log("ToDoIst update OK, project : " + this.config.projects + " at : " + moment.unix(this.lastUpdate).format(this.config.displayLastUpdateFormat)); //AgP
+			if (this.config.displayLastUpdate) 
+			{
+				//save the timestamp of the last update to be able to display it
+				this.lastUpdate = Date.now() / 1000; 
+				Log.log("Todoist update OK, project : " + this.config.projects + " at : " + moment.unix(this.lastUpdate).format(this.config.displayLastUpdateFormat));
 			}
 
 			this.loaded = true;
 			this.updateDom(1000);
-		} else if (notification === "FETCH_ERROR") {
+		} 
+		else if (notification === "FETCH_ERROR") 
 			Log.error("Todoist Error. Could not fetch todos: " + payload.error);
-		}
 	},
 
-	filterTodoistData: function (tasks) {
+	filterTodoistData: function (payload) {
 		var self = this;
 		var items = [];
-		var labelIds = [];
+		var tasks = payload.tasks.results;
+		var projects = payload.projects.results;
+		var sections = payload.sections.results;
+		var collaborators = payload.collaborators;
 
+		if (payload.tasks.apiKey != self.config.apiKey) return;
 		if (tasks == undefined) return; 
-		if (tasks.accessToken != self.config.accessToken) return;
-		if (tasks.items == undefined) return;
 
-		// If groupByProjects is true, we need to ensure "project" is the first element in sortOrder
-		// otherwise the sort will be incorrect after the grouping
-		if (this.config.groupByProject && this.config.sortOrder[0] !== "project") {
-			var array = this.config.sortOrder;
-			if (array.includes("project")) {
-				// sortOrder contains project, but it isn't first
-				var i = array.indexOf("project");
+		tasks.forEach(function (item) {
+			item.project    = projects.find(p => p.id === item.project_id);
+			item.section    = sections.find(s => s.id === item.section_id);
+			item.assignedTo = collaborators.find(c => c.id === item.responsible_uid);
+		});
 
-				// remove "project" from array
-				const element = array.splice(i, 1)[0];
-
-				// add "project" to front
-				array.unshift(element);
-			}
-			else {
-				// add "project" to front
-				array.unshift("project");
-			}
-
-			// update config
-			this.config.sortOrder = array;
-		}
-
-		if (this.config.blacklistProjects) {
-			// take all projects in payload, and remove the ones specified by user
-			// i.e., convert user's "whitelist" into a "blacklist"
-			this.config.projects = [];
-			tasks.projects.forEach(project => {
-				if(this.userList.includes(project.id)) {
-					return; // blacklisted
-				}
-				this.config.projects.push(project.id);
-			});
-			if(self.config.debug) {
-				console.log("MMM-Todoist: original list of projects was blacklisted.\n" +
-					"Only considering the following projects:");
-				console.log(this.config.projects);
-			}
-		}
-
-		/* Not needed for labels, but kept for reuse elsewhere
-		// Loop through labels fetched from API and find corresponding label IDs for task filtering
-		// Could be re-used for project names -> project IDs.
-		if (self.config.labels.length>0 && tasks.labels != undefined) {
-			for (let apiLabel of tasks.labels) {
-				for (let configLabelName of self.config.labels) {
-					if (apiLabel.name == configLabelName) {
-						labelIds.push(apiLabel.id);
-						break;
-					}
-				}
-			}
-		}
-		*/
-
-		if (self.config.displayTasksWithinDays > -1 || !self.config.displayTasksWithoutDue) {
-			tasks.items = tasks.items.filter(function (item) {
-				if (item.due === null) {
+		if (self.config.displayTasksWithinDays > -1 || !self.config.displayTasksWithoutDue) 
+		{
+			tasks = tasks.filter(function (item) {
+				if (item.due === null)
 					return self.config.displayTasksWithoutDue;
-				}
 
-				var oneDay = 24 * 60 * 60 * 1000;
+				var oneDay      = 24 * 60 * 60 * 1000;
 				var dueDateTime = self.parseDueDate(item.due.date);
-				var dueDate = new Date(dueDateTime.getFullYear(), dueDateTime.getMonth(), dueDateTime.getDate());
-				var now = new Date();
-				var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-				var diffDays = Math.floor((dueDate - today) / (oneDay));
+				var dueDate     = new Date(dueDateTime.getFullYear(), dueDateTime.getMonth(), dueDateTime.getDate());
+				var now         = new Date();
+				var today       = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+				var diffDays    = Math.floor((dueDate - today) / (oneDay));
+
 				return diffDays <= self.config.displayTasksWithinDays;
 			});
 		}
 
 		//Filter the Todos by the criteria specified in the Config
-		tasks.items.forEach(function (item) {
+		tasks.forEach(function (item) {
 			// Ignore sub-tasks
-			if (item.parent_id!=null && !self.config.displaySubtasks) { return; }
+			if (item.parent_id != null && !self.config.displaySubtasks)
+				return;
 
-			// Filter using label if a label is configured
-			if (self.config.labels.length > 0 && item.labels.length > 0) {
-        			// Check all the labels assigned to the task. Add to items if match with configured label
-        			for (let label of item.labels) {
-          				for (let labelName of self.config.labels) {
-            					if (label == labelName) { //the string returned from SyncAPI matches the strong in config
-              						items.push(item);
-              						return;
-            					}
-          				}
-        			}
-      			}
-
-			// Filter using projets if projects are configured
-			if (self.config.projects.length>0){
-			  self.config.projects.forEach(function (project) {
-			  		if (item.project_id == project) {
-						items.push(item);
-						return;
-					}
-			  });
-			}
+			items.push(item);
 		});
 
 		//**** FOR DEBUGGING TO HELP PEOPLE GET THEIR PROJECT IDs */
 		if (self.config.debug) {
 			console.log("%c *** PROJECT -- ID ***", "background: #222; color: #bada55");
-			tasks.projects.forEach(project => {
-				console.log("%c" + project.name + " -- " + project.id, "background: #222; color: #bada55");
+			tasks.forEach(task => {
+				console.log("%c" + task.name + " -- " + task.project_id, "background: #222; color: #bada55");
 			});
 		};
 		//****** */
@@ -349,16 +319,16 @@ Module.register("MMM-Todoist2", {
 				item.due["date"] = "2100-12-31";
 				item.all_day = true;
 			}
+
 			// Used to sort by date.
 			item.date = self.parseDueDate(item.due.date);
 
 			// as v8 API does not have 'all_day' field anymore then check due.date for presence of time
 			// if due.date has a time then set item.all_day to false else all_day is true
-			if (item.due.date.length > 10) {
+			if (item.due.date.length > 10)
 				item.all_day = false;
-			} else {
+			else
 				item.all_day = true;
-			}
 		});
 
 		//***** Sorting code if you want to add new methods. */
@@ -385,26 +355,18 @@ Module.register("MMM-Todoist2", {
 		items.sort(function(a, b) {
 			for (var i = 0; i < sortTypes.length; i++) {
 				var cmp = getComparator(sortTypes[i])(a, b);
-				if (cmp !== 0) return cmp;
+
+				if (cmp !== 0) 
+					return cmp;
 			}
 			return 0;
 		});
 
 		//Slice by max Entries
-		items = items.slice(0, this.config.maximumEntries);
-
-		// Group by project
-		if (self.config.groupByProject) {
-			
-		}
-
-		this.tasks = {
-			"items": items,
-			"projects": tasks.projects,
-			"collaborators": tasks.collaborators
-		};
-
+		this.items = items.slice(0, this.config.maximumEntries);
 	},
+
+
 	/*
 	 * The Todoist API returns task due dates as strings in these two formats: YYYY-MM-DD and YYYY-MM-DDThh:mm:ss
 	 * This depends on whether a task only has a due day or a due day and time. You cannot pass this date string into
@@ -417,259 +379,110 @@ Module.register("MMM-Todoist2", {
 		let [year, month, day, hour = 0, minute = 0, second = 0] = date.split(/\D/).map(Number);
 
 		// If the task's due date has a timezone set (as opposed to the default floating timezone), it's given in UTC time.
-		if (date[date.length -1] === "Z") {
+		if (date[date.length -1] === "Z")
 			return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
-		}
 
 		return new Date(year, month - 1, day, hour, minute, second);
 	},
+
 	sortByTodoistComparator: function(a, b) {
-		if (!a.parent_id && !b.parent_id) { // neither have parent_id so both are parent tasks, sort by their id
+
+		// neither have parent_id so both are parent tasks, sort by their id
+		if (!a.parent_id && !b.parent_id) 
 			return a.id - b.id;
-		} 
-		else if (a.parent_id === b.parent_id) { // both are children of the same parent task, sort by child order
+
+		// both are children of the same parent task, sort by child order
+		else if (a.parent_id === b.parent_id)
 			return a.child_order - b.child_order;
-		} 
-		else if (a.parent_id === b.id) { // a is a child of b, so it goes after b
+
+		// a is a child of b, so it goes after b
+		else if (a.parent_id === b.id) 
 			return 1;
-		} 
-		else if (b.parent_id === a.id) { // b is a child of a, so it goes after a
+
+		// b is a child of a, so it goes after a
+		else if (b.parent_id === a.id) 
 			return -1;
-		} 
-		else if (!a.parent_id) { // a is a parent task, b is a child (but not of a), so compare a to b's parent
+
+		// a is a parent task, b is a child (but not of a), so compare a to b's parent
+		else if (!a.parent_id) 
 			return a.id - b.parent_id;
-		} 
-		else if (!b.parent_id) { // b is a parent task, a is a child (but not of b), so compare b to a's parent
+		
+		// b is a parent task, a is a child (but not of b), so compare b to a's parent
+		else if (!b.parent_id) 
 			return a.parent_id - b.id;
-		} 
-		else { // both are child tasks, but with different parents so sort by their parents
+
+		// both are child tasks, but with different parents so sort by their parents
+		else
 			return a.parent_id - b.parent_id;
-		}
+
 	},
+
 	sortByProjectComparator: function(a, b) {
 		return a.project_id.localeCompare(b.project_id);
 	},
+
 	sortByPriorityComparator: function(a, b) {
 		return b.priority - a.priority;
 	},
+
 	sortByDueDateAscComparator: function(a, b) {
 		return a.date - b.date;
 	},
+
 	sortByDueDateDescComparator: function(a, b) {
 		return b.date - a.date;
 	},
-	createCell: function(className, innerHTML) {
-		var cell = document.createElement("div");
-		cell.className = "col " + className;
-		cell.innerHTML = innerHTML;
-		return cell;
-	},
-	createHeader: function(className, innerHTML, style) {
-		var row = document.createElement("div");
-		row.className = "row projectheader " + className;
-		row.innerHTML = innerHTML;
-		row.style = style;
-		return row;
-	},
-	addPriorityIndicatorCell: function(item) {
-		var className = "priority ";
-		switch (item.priority) {
-			case 4:
-				className += "priority1";
-				break;
-			case 3:
-				className += "priority2";
-				break;
-			case 2:
-				className += "priority3";
-				break;
-			default:
-				className += "";
-				break;
-		}
-		return this.createCell(className, "&nbsp;");;
-	},
-	addTodoTextCell: function(item) {
-		var temp = document.createElement('div');
-		temp.innerHTML = item.contentHtml;
 
-		var para = temp.getElementsByTagName('p');
-		var taskText = para[0].innerHTML;
-		// if sorting by todoist, indent subtasks under their parents
-		if (this.config.sortOrder.includes("todoist") && item.parent_id) {
-			// this item is a subtask so indent it
-			taskText = '- ' + taskText;
-		}
-		return this.createCell("title bright alignLeft", 
-			this.shorten(taskText, this.config.maxTitleLength, this.config.wrapEvents));
 
-		// return this.createCell("title bright alignLeft", item.content);
-	},
-	addDueDateCell: function(item) {
-		var className = "bright align-right dueDate ";
-		var innerHTML = "";
-		
-		var oneDay = 24 * 60 * 60 * 1000;
-		var dueDateTime = this.parseDueDate(item.due.date);
-		var dueDate = new Date(dueDateTime.getFullYear(), dueDateTime.getMonth(), dueDateTime.getDate());
-		var now = new Date();
-		var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-		var diffDays = Math.floor((dueDate - today) / (oneDay));
-		var diffMonths = (dueDate.getFullYear() * 12 + dueDate.getMonth()) - (now.getFullYear() * 12 + now.getMonth());
+	///////////////////////////////////////////////
+	// UI METHODS BELOW
+	///////////////////////////////////////////////
 
-		if (diffDays < -1) {
-			innerHTML = dueDate.toLocaleDateString(config.language, {
-												"month": "short"
-											}) + " " + dueDate.getDate();
-			className += "xsmall overdue";
-		} else if (diffDays === -1) {
-			innerHTML = this.translate("YESTERDAY");
-			className += "xsmall overdue";
-		} else if (diffDays === 0) {
-			innerHTML = this.translate("TODAY");
-			if (item.all_day || dueDateTime >= now) {
-				className += "xsmall today";
-			} else {
-				className += "xsmall overdue";
-			}
-		} else if (diffDays === 1) {
-			innerHTML = this.translate("TOMORROW");
-			className += "xsmall tomorrow";
-		} else if (diffDays < 7) {
-			innerHTML = dueDate.toLocaleDateString(config.language, {
-				"weekday": "short"
-			});
-			className += "xsmall";
-		} else if (diffMonths < 7 || dueDate.getFullYear() == now.getFullYear()) {
-			innerHTML = dueDate.toLocaleDateString(config.language, {
-				"month": "short"
-			}) + " " + dueDate.getDate();
-			className += "xsmall";
-		} else if (item.due.date === "2100-12-31") {
-			innerHTML = "";
-			className += "xsmall";
-		} else {
-			innerHTML = dueDate.toLocaleDateString(config.language, {
-				"month": "short"
-			}) + " " + dueDate.getDate() + " " + dueDate.getFullYear();
-			className += "xsmall";
-		}
-
-		if (innerHTML !== "" && !item.all_day) {
-			function formatTime(d) {
-				function z(n) {
-					return (n < 10 ? "0" : "") + n;
-				}
-				var h = d.getHours();
-				var m = z(d.getMinutes());
-				if (config.timeFormat == 12) {
-					return " " + (h % 12 || 12) + ":" + m + (h < 12 ? " AM" : " PM");
-				} else {
-					return " " + h + ":" + m;
-				}
-			}
-			innerHTML += formatTime(dueDateTime);
-		}
-		return this.createCell(className, innerHTML);
-	},
-	addProjectCell: function(item) {
-		var project = this.tasks.projects.find(p => p.id === item.project_id);
-		var innerHTML = "<div class='col projectname'>" + project.name + "</div>";
-		return this.createCell("xsmall project", innerHTML);
-	},
-	addAssigneeAvatarCell: function(item, collaboratorsMap) {	
-		var colIndex = collaboratorsMap.get(item.responsible_uid);
-
-		var cell = this.createCell("image", "");
-
-		// Add avatar image only if collaborator is defined
-		if (typeof colIndex !== "undefined" && this.tasks.collaborators[colIndex].image_id!=null) {
-			var avatarImg = document.createElement("img");
-			avatarImg.className = "avatarImg";
-			avatarImg.src = "https://dcff1xvirvpfp.cloudfront.net/" + this.tasks.collaborators[colIndex].image_id + "_big.jpg";
-			cell.appendChild(avatarImg);
-		} 
-
-		return cell;
-	},
-	addProjectHeader: function(item) {	
-		var project = this.tasks.projects.find(p => p.id === item.project_id);
-		var innerHTML = "<div class='col projectname'>" + project.name + "</div>";
-		var headerStyle = "";
-		return this.createHeader("", innerHTML, headerStyle);
-	},
 	getDom: function () {
-	
-		if (this.config.hideWhenEmpty && this.tasks.items.length===0) {
+		if (this.config.hideWhenEmpty && this.items != null && this.items.length === 0)
 			return null;
-		}
 	
 		//Add a new div to be able to display the update time alone after all the task
 		var wrapper = document.createElement("div");
 
 		//display "loading..." if not loaded
-		if (!this.loaded) {
+		if (!this.loaded) 
+		{
 			wrapper.innerHTML = "Loading...";
 			wrapper.className = "dimmed light small";
 			return wrapper;
 		}
 
-		// The tasks list uses a CSS flexgrid layout. All rows have a class of 'row' and all columns have a class of 'col'
-		// Column or row specific styling may have additional classes.
-		var divBody = document.createElement("div");
-		divBody.className = "grid normal small light";
-
-		if (this.tasks === undefined) {
+		if (this.items === undefined)
 			return wrapper;
+
+		// The display renders the tasks, then everything that follows them
+		// (last update time, debug output) is appended
+		switch (this.getDisplayMode()) {
+			case "kanban":
+				wrapper.appendChild(MMMTodoist2Kanban.render(this, this.items));
+				break;
+			case "calendar":
+				wrapper.appendChild(MMMTodoist2Calendar.render(this, this.items));
+				break;
+			default:
+				wrapper.appendChild(MMMTodoist2List.render(this, this.items));
+				break;
 		}
 
-		// create mapping from user id to collaborator index
-		var collaboratorsMap = new Map();
+		this.appendFooter(wrapper);
 
-		for (var value=0; value < this.tasks.collaborators.length; value++) {
-			collaboratorsMap.set(this.tasks.collaborators[value].id, value);
-		}
+		return wrapper;
+	},
 
-		var lastProject = ""; // stores the last project name shown, used for grouping by project name
-
-		//Iterate through Todos
-		this.tasks.items.forEach(item => {
-			var divRow = document.createElement("div");
-
-			//Add the Row
-			divRow.className = "row task";
-			
-			//Headers
-			if (this.config.groupByProject && lastProject !== item.project_id) {
-				// show project name as a header
-				divBody.append(this.addProjectHeader(item));
-				lastProject = item.project_id;
-			}
-
-			//Columns
-			divRow.appendChild(this.addPriorityIndicatorCell(item));
-			divRow.appendChild(this.addTodoTextCell(item));
-			divRow.appendChild(this.addDueDateCell(item));
-
-			// If grouping by project, do not show the project as a cell
-			if (this.config.showProject && !this.config.groupByProject) {
-				divRow.appendChild(this.addProjectCell(item));
-			}
-
-			if (this.config.displayAvatar) {
-				divRow.appendChild(this.addAssigneeAvatarCell(item, collaboratorsMap));
-			}
-
-			divBody.appendChild(divRow);
-		});
-		
-		wrapper.appendChild(divBody);
-
-		// create the gradient
-		if (this.config.fade && this.config.fadePoint < 1) divBody.querySelectorAll('.row').forEach((row, i, rows) => row.style.opacity = Math.max(0, Math.min(1 - ((((i + 1) * (1 / (rows.length))) - this.config.fadePoint) / (1 - this.config.fadePoint)) * (1 - this.config.fadeMinimumOpacity), 1)));
-
+	///////
+	// Appends everything that follows the tasks themselves, so that every
+	// display shows it
+	///////
+	appendFooter: function (wrapper) {
 		// display the update time at the end, if defined so by the user config
-		if (this.config.displayLastUpdate) {
+		if (this.config.displayLastUpdate) 
+		{
 			var updateinfo = document.createElement("div");
 			updateinfo.className = "xsmall light align-left";
 			updateinfo.innerHTML = "Last Update : " + moment.unix(this.lastUpdate).format(this.config.displayLastUpdateFormat);
@@ -677,18 +490,27 @@ Module.register("MMM-Todoist2", {
 		}
 
 		//**** FOR DEBUGGING TO HELP PEOPLE GET THEIR PROJECT IDs - (People who can't see console) */
-		if (this.config.debug) {
+		if (this.config.debug) 
+		{
 			var projectsids = document.createElement("div");
 			projectsids.className = "xsmall light align-left";
-			projectsids.innerHTML = "<span>*** PROJECT -- ID ***</span><br />";
-			this.tasks.projects.forEach(project => {
-				projectsids.innerHTML += "<span>" + project.name + " -- " + project.id + "</span><br />";
+			projectsids.innerHTML = "<span>*** PROJECT - ID ***</span><br />";
+			
+			const uniqueProjects = this.items
+				.flatMap((task) => task.project || [])
+				.reduce((unique, project) => {
+					if (!unique.find((c) => c.id === project.id))
+						unique.push(project);
+			
+					return unique;
+				}, []);
+
+			uniqueProjects.forEach(project => {
+				projectsids.innerHTML += "<span>" + project.name + " - " + project.id + "</span><br />";
 			});
+
 			wrapper.appendChild(projectsids);
 		};
 		//****** */
-
-		return wrapper;
 	}
-
 });

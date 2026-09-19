@@ -1,0 +1,219 @@
+/* Magic Mirror
+ * Module: MMM-Todoist2 -- Shared display styles
+ *
+ * The shell, header, priority and group accent styles shared by the list,
+ * kanban and calendar displays, so all three stay visually consistent. Every
+ * rule is scoped under `.mmm-todoist2-display` so it cannot leak into other
+ * modules.
+ *
+ * Colours, fonts, radii and shadows all come from the system-wide MagicMirror
+ * theme (the `--mm-*` variables defined by css/themes/mm-*.css), so swapping
+ * the theme in config/custom.css restyles these displays along with
+ * everything else.
+ *
+ * MIT Licensed.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Fallbacks -- the light theme's values for every token these displays use,
+ * so they still render when no mm theme is loaded. `:where()` drops the
+ * specificity to zero, so any theme's `:root` rule wins regardless of load
+ * order.
+ * ------------------------------------------------------------------------ */
+:where(:root) {
+    --mm-font-primary: "Roboto Condensed", "Arial Narrow", sans-serif;
+    --mm-font-secondary: "Roboto", "Helvetica Neue", Arial, sans-serif;
+
+    --mm-card-bg: #f8f9fb;
+    --mm-surface-1: #f8f9fb;
+    --mm-card-shadow: 0 2px 6px rgba(16, 24, 40, 0.09), 0 1px 2px rgba(16, 24, 40, 0.06);
+    --mm-surface-2: #ffffff;
+
+    --mm-text: #2c323c;
+    --mm-text-bright: #0a0e14;
+    --mm-text-muted: #5d6674;
+    --mm-text-dimmed: #9aa2ae;
+
+    --mm-border: #d3d9e1;
+    --mm-border-subtle: #e4e8ee;
+    --mm-border-width: 1px;
+    --mm-border-style: solid;
+
+    --mm-radius-sm: 4px;
+    --mm-radius-md: 8px;
+    --mm-radius-lg: 12px;
+
+    --mm-badge-bg: #ffffff;
+    --mm-badge-text: #0a0e14;
+    --mm-badge-radius: 999px;
+
+    /* Priorities */
+    --mm-error: #d62f2f;
+    --mm-warning: #e09c1a;
+    --mm-info: #1b72ae;
+    --mm-neutral: #6b7380;
+
+    /* Due dates in the list display */
+    --mm-info-text: #16669e;
+
+    /* Group accents (tint + header) */
+    --mm-primary: #2463d6;
+    --mm-primary-subtle: #e3eaf7;
+    --mm-success-text: #16703b;
+    --mm-success-subtle: #e2ede9;
+    --mm-warning-text: #8f5a00;
+    --mm-warning-subtle: #f6f0e4;
+    --mm-error-text: #b02020;
+    --mm-error-subtle: #f5e5e7;
+    --mm-secondary: #7342d6;
+    --mm-secondary-subtle: #ebe7f7;
+
+    /* Today's cell in the calendar display */
+    --mm-calendar-today: #2463d6;
+    --mm-calendar-today-bg: #e3eaf7;
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared shell
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-display {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--mm-card-bg);
+    border-radius: var(--mm-radius-lg);
+    overflow: hidden;
+    font-family: var(--mm-font-secondary);
+    color: var(--mm-text);
+    text-align: left;
+    -webkit-font-smoothing: antialiased;
+}
+
+.mmm-todoist2-display *,
+.mmm-todoist2-display *::before,
+.mmm-todoist2-display *::after {
+    box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------------------
+ * Priority colours, used by the list rows, kanban cards and calendar chips
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-display .t2-priority-urgent {
+    color: var(--mm-error);
+}
+
+.mmm-todoist2-display .t2-priority-high {
+    color: var(--mm-warning);
+}
+
+.mmm-todoist2-display .t2-priority-medium {
+    color: var(--mm-info);
+}
+
+.mmm-todoist2-display .t2-priority-low {
+    color: var(--mm-neutral);
+}
+
+/* ---------------------------------------------------------------------------
+ * Group accents -- kanban columns and list groups set `data-color` and read
+ * `--group-accent` (dots, labels) and `--group-accent-subtle` (tinted
+ * backgrounds). The renderers assign the keys in display order.
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-display [data-color="daily"] {
+    --group-accent: var(--mm-primary);
+    --group-accent-subtle: var(--mm-primary-subtle);
+}
+
+.mmm-todoist2-display [data-color="weekly"] {
+    --group-accent: var(--mm-success-text);
+    --group-accent-subtle: var(--mm-success-subtle);
+}
+
+.mmm-todoist2-display [data-color="bimonthly"] {
+    --group-accent: var(--mm-warning-text);
+    --group-accent-subtle: var(--mm-warning-subtle);
+}
+
+.mmm-todoist2-display [data-color="monthly"] {
+    --group-accent: var(--mm-error-text);
+    --group-accent-subtle: var(--mm-error-subtle);
+}
+
+.mmm-todoist2-display [data-color="quarterly"] {
+    --group-accent: var(--mm-secondary);
+    --group-accent-subtle: var(--mm-secondary-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared header: title, subtitle, priority legend
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-display .t2-header {
+    /* MagicMirror styles the bare <header> element globally: uppercase text,
+       a dimmed border and its own spacing. This header opts out of all of it,
+       or the title and legend inherit the wrong case and leading. */
+    text-transform: none;
+    line-height: normal;
+    margin: 0;
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--mm-border);
+    background: var(--mm-surface-2);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-display .t2-title {
+    font-family: var(--mm-font-primary);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--mm-text-bright);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.mmm-todoist2-display .t2-subtitle {
+    font-family: var(--mm-font-secondary);
+    font-size: 13px;
+    color: var(--mm-text-muted);
+    margin: 4px 0 0;
+}
+
+.mmm-todoist2-display .t2-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-display .t2-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mmm-todoist2-display .t2-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-display .t2-legend-label {
+    font-family: var(--mm-font-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mm-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared "+N more" truncation marker
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-display .t2-more {
+    font-family: var(--mm-font-secondary);
+    font-weight: 500;
+    color: var(--mm-text-dimmed);
+}

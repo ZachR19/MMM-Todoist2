@@ -1,127 +1,13 @@
+/* Magic Mirror
+ * Module: MMM-Todoist2
+ *
+ * Module-wide styles. Each display's own styles live in
+ * MMM-Todoist2-{list,kanban,calendar}.css, with the shared shell, header and
+ * theme hookup in MMM-Todoist2-display.css.
+ *
+ * MIT Licensed.
+ */
+
 .MMM-Todoist2 {
     min-width: 20.6rem !important;
-}
-
-:root {
-    --color-red: #f35857;
-    --color-green: #03a05c;
-    --color-orange: #EB8909;
-    --color-blue: #246FE0;
-}
-
-.grid {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.col {
-    flex: 1;
-}
-
-.row {
-    width:100%;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-}
-
-.task {
-    flex-direction: row;
-}
-
-.projectheader {
-    /* color: white; */
-    display: flex;
-    border-bottom: 1px solid;
-    justify-content: start;
-    align-items: start;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    margin-top: 1rem;
-}
-
-.priority {
-    flex-grow: 0.03;
-    margin-right: 6px;
-    width: 3px;
-    border-right: 3px;
-}
-
-.priority1 {
-    background-color: var(--color-red);
-}
-
-.priority2 {
-    background-color: var(--color-orange);
-}
-
-.priority3 {
-    background-color: var(--color-blue);
-}
-
-.alignLeft {
-    text-align: left;
-}
-
-.overdue {
-    color: var(--color-red);
-}
-
-.today {
-    color: var(--color-green);
-}
-
-.tomorrow {
-    color: var(--color-blue);
-}
-
-.projectname {
-
-}
-
-.project {
-    margin-top: 4px;
-    min-width: 2rem;
-    margin-left: 4px;
-    flex: 0 0 4rem;
-}
-
-.title {
-    flex: 0 0 13rem;
-    min-width: 13rem;
-}
-
-.dueDate {
-    margin-top: 4px;
-    display: flex;
-    justify-content: end;
-    width: 3.5rem;
-    flex: 0 0 3rem;
-}
-
-.image {
-    max-width: 27px;
-}
-
-.avatarImg {
-    border-radius: 50%;
-    /* filter: grayscale(100%); */
-    height: 27px;
-    display: block;
-    margin-left: 10px;
-    margin-right: auto;
-}
-
-
-/* force alignment of all task columns EXCEPT the task name itself */
-.row .col:not(:nth-child(2)) {
-    align-self: start;
-    justify-self: end;
-}
-
-/* Adjust spacing of first header, if any */
-.row.projectheader:first-child {
-    margin-top: 0rem;
 }

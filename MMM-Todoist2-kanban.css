@@ -1,0 +1,179 @@
+/* Magic Mirror
+ * Module: MMM-Todoist2 -- Kanban display
+ *
+ * Layout for the optional kanban taskboard. Only loaded when the module config
+ * sets `displayMode: "kanban"`. The palette, fonts and shared header styles
+ * live in MMM-Todoist2-display.css; everything here is scoped under
+ * `.mmm-todoist2-kanban` so it cannot leak into the other displays.
+ *
+ * MIT Licensed.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Board body -- columns flex to fill the region instead of scrolling, since
+ * nothing off-screen is reachable on a mirror.
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-kanban .kb-board {
+    padding: 24px 32px 32px;
+    overflow: hidden;
+}
+
+.mmm-todoist2-kanban .kb-columns {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.mmm-todoist2-kanban .kb-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 260px;
+    min-width: 0;
+    max-width: 320px;
+    background: var(--group-accent-subtle);
+    border-radius: var(--mm-radius-lg);
+    padding: 0 0 16px;
+    overflow: hidden;
+}
+
+.mmm-todoist2-kanban .kb-column-header {
+    padding: 16px 16px 14px;
+    border-bottom: var(--mm-border-width) var(--mm-border-style) var(--mm-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.mmm-todoist2-kanban .kb-column-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.mmm-todoist2-kanban .kb-column-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--group-accent);
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-kanban .kb-column-label {
+    font-family: var(--mm-font-primary);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--group-accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mmm-todoist2-kanban .kb-column-count {
+    font-family: var(--mm-font-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mm-badge-text);
+    background: var(--mm-badge-bg);
+    border-radius: var(--mm-badge-radius);
+    padding: 2px 8px;
+    flex-shrink: 0;
+}
+
+.mmm-todoist2-kanban .kb-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 12px 0;
+    overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+ * Task cards -- read only, so no hover or pointer affordances.
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-kanban .kb-card {
+    background: var(--mm-surface-2);
+    border: 1px solid var(--mm-border);
+    border-radius: var(--mm-radius-md);
+    padding: 14px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: var(--mm-card-shadow);
+    cursor: default;
+}
+
+.mmm-todoist2-kanban .kb-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.mmm-todoist2-kanban .kb-priority-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.mmm-todoist2-kanban .kb-card-title {
+    font-family: var(--mm-font-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--mm-text);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.mmm-todoist2-kanban .kb-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-left: 26px;
+}
+
+.mmm-todoist2-kanban .kb-due {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--mm-text-muted);
+    font-size: 12px;
+    font-family: var(--mm-font-secondary);
+    min-width: 0;
+}
+
+.mmm-todoist2-kanban .kb-due-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mmm-todoist2-kanban .kb-due.kb-due-overdue {
+    color: var(--mm-error-text);
+}
+
+.mmm-todoist2-kanban .kb-recurring {
+    color: var(--mm-text-dimmed);
+    display: flex;
+    flex-shrink: 0;
+}
+
+/* Subtasks keep the demo card, indented like the list display */
+.mmm-todoist2-kanban .kb-card.kb-subtask {
+    margin-left: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Truncation footer -- shown when a column holds more tasks than it displays
+ * ------------------------------------------------------------------------ */
+.mmm-todoist2-kanban .kb-more {
+    font-size: 12px;
+    padding: 4px 2px 0;
+}
